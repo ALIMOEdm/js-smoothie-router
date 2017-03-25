@@ -1,4 +1,3 @@
-
 var Router = {};
 
 (function (Router) {
@@ -42,11 +41,14 @@ var Router = {};
 						throw new Error('Expected Parameters for refference '+element.innerHTML);
 					}
 					
-					params = params.split(',');
+					// фигурная скобка что бы учесть объекты, в которых > 1 поля
+					params = params.split(', {');
 					params[0] = params[0].replace(/\'/g, '');
 					
 					if (params[1]) {
+						params[1] = '{'+params[1];
 						params[1] = params[1].replace(/\'/g, '"');
+						console.log(params[1]);
 						params[1] = JSON.parse(params[1]);
 					}
 					
@@ -54,7 +56,6 @@ var Router = {};
 					element.setAttribute(refsAttr, url);
 				}
 			}
-			
 			
 			element.addEventListener('click', clickHandler);
 			
@@ -80,9 +81,13 @@ var Router = {};
 		console.log(destinationUrl);
 		setUrl(destinationUrl);
 		
-		//history.pushState(r, '', r.url);
+		var ob = {
+			title: document.title,
+			url: r.url
+		};
 		
-		console.log(r);
+		//history.pushState(ob, ob.title, ob.url);
+		
 		if (r.action) {
 			r.action();
 		}
@@ -100,8 +105,22 @@ var Router = {};
 			routeIsName = true;
 		} else {
 			for (key in routes) {
-				var url = routes[key]['url'];
-				
+				var url = '';
+				var currentRoute = routes[key];
+				while(true) {
+					var r1 = currentRoute.url.replace(/^\//, '');
+					if (currentRoute.url && !url && !r1) {
+						r1 = currentRoute.url;
+					}
+					var r2 = url.replace(/^\//, '');
+					url = url ? r1 + '/' + r2 : r1;
+					if (currentRoute.parent) {
+						currentRoute = routes[currentRoute.parent];
+					} else {
+						break;
+					}
+				}
+				url = url.replace(/\/\//gi, '\/');
 				var urlParts = url.split('/');
 				// Remove first element from the array
 				urlParts.shift();
@@ -124,9 +143,9 @@ var Router = {};
 		}
 		
 		if (routeIsName) {
-			destinationUrl = formDestinationUrl(r.url, paramsObject);
+			destinationUrl = formDestinationUrl(r.url, paramsObject, r, true);
 		} else {
-			destinationUrl = formDestinationUrl(route, paramsObject);
+			destinationUrl = formDestinationUrl(route, paramsObject, r);
 		}
 		
 		return destinationUrl;
@@ -135,7 +154,7 @@ var Router = {};
 	/**
 	* Формируем из роута урл, подставляя параметры, если это необходимо
 	**/
-	function formDestinationUrl(route, paramsObject)
+	function formDestinationUrl(route, paramsObject, r, isRoute)
 	{
 		var urlParts = route.split('/');
 		// Remove first element from the array
@@ -153,6 +172,14 @@ var Router = {};
 			} else {
 				destinationUrl += '/' + urlParts[i];
 			}
+		}
+		
+		// если route это урл из текущего роута, 
+		// то нам надо опросить его родителей и сформировать окончательный url
+		// а иначе нам приходит нормальный урл
+		if (r.parent && isRoute) {
+			destinationUrl = formDestinationUrl(routes[r.parent].url, paramsObject, routes[r.parent]) + destinationUrl;
+			destinationUrl = destinationUrl.replace(/\/\//, '\/');
 		}
 		
 		return destinationUrl;
