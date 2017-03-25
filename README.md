@@ -1,4 +1,4 @@
-# js-smoozy-router
+# js-smoothie-router
 simple javascript router
 
 ### HTML
