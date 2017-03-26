@@ -5,6 +5,8 @@ var Router = {};
     var currentRoute = null;
     var previousRoute = null;
 
+    var STATE_GO_URL = 2;
+    var STATE_URL_CHANGED = 1;
     var systemState = null;// переменная отвечаетза то, что бы понять, был ли активирован роут или была нажата кнопка назад\вперед
 
     var refsAttr = 'sup-ref';
@@ -14,16 +16,19 @@ var Router = {};
             location.hash = '#/';
         }
 
-        var refs = document.querySelectorAll('a['+refsAttr+']');
-
         var clickHandler = function (event) {
+            var element = event.target;
+            if (!element.hasAttribute(refsAttr)) {
+                return;
+            }
+
             event.preventDefault();
             event.stopPropagation();
 
-            var url = this.getAttribute(refsAttr);
+            var url = element.getAttribute(refsAttr);
 
             if (checkIfRouteNameIfRef(url)) {
-                var params = transformRefAttributeToParameter(this);
+                var params = transformRefAttributeToParameter(element);
                 goUrl(params[0], params[1]);
             } else {
                 if (/#/.test(url)) {
@@ -33,17 +38,13 @@ var Router = {};
                 goUrl(url);
             }
         };
-
-        for (var i = 0, n = refs.length; i < n; i++) {
-            var element = refs[i];
-            element.addEventListener('click', clickHandler);
-
-        }
+        document.addEventListener('click', clickHandler);
 
         goUrl(location.hash.replace(/#/, ''));
 
+        //Fire after url was changed
         window.addEventListener("hashchange", function (event) {
-            if (systemState == 1) {
+            if (systemState == STATE_URL_CHANGED) {
                 var matches = event.newURL.match(/#(.*)$/);
                 if (matches[1]) {
                     goUrl(matches[1]);
@@ -53,10 +54,12 @@ var Router = {};
             console.log('hashchange');
         }, false);
 
-        window.onpopstate = function () {
-            systemState = 1;
+        // 
+        // https://developer.mozilla.org/ru/docs/Web/API/WindowEventHandlers/onpopstate
+        window.addEventListener('popstate', function () {
+            systemState = STATE_URL_CHANGED;
             console.log('onpopstate');
-        };
+        });
     };
 
     /**
@@ -123,7 +126,7 @@ var Router = {};
      **/
     function goUrl(route, paramsObject)
     {
-        systemState = 2;
+        systemState = STATE_GO_URL;
         var r = {};
         var destinationUrl = getDestinationUrl(route, paramsObject, r);
 
@@ -310,10 +313,17 @@ var Router = {};
         goUrl(route, paramsObject);
     };
 
+    /**
+     * Get current route
+     *
+     * @returns {*}
+     */
     Router.getCurrentRoute = function() {
         if (currentRoute) {
             return currentRoute.name;
         }
+
+        return null;
     }
 })(Router);
 
