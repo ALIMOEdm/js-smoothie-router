@@ -54,7 +54,7 @@ var Router = {};
             console.log('hashchange');
         }, false);
 
-        // 
+        //
         // https://developer.mozilla.org/ru/docs/Web/API/WindowEventHandlers/onpopstate
         window.addEventListener('popstate', function () {
             systemState = STATE_URL_CHANGED;
@@ -126,9 +126,19 @@ var Router = {};
      **/
     function goUrl(route, paramsObject)
     {
+        
+        
         systemState = STATE_GO_URL;
         var r = {};
         var destinationUrl = getDestinationUrl(route, paramsObject, r);
+        
+        if (r.onBefore) {
+            try {
+                r.onBefore();
+            } catch (e) {
+                return
+            }
+        }
 
         previousRoute = currentRoute;
         currentRoute = r;
@@ -144,6 +154,12 @@ var Router = {};
 
         if (r.action) {
             r.action();
+        }
+
+        if (r.onAfter) {
+            try {
+                r.onAfter();
+            } catch (e) {}
         }
     }
 
@@ -292,8 +308,11 @@ var Router = {};
      *
      * sample
      * {
-		url: /,
-		action: function (){}
+		url: '/',
+		action: function (){},
+		parent: 'route_name',
+		onBefore: function () {},
+		onAfter: function () {}
 	* }
      **/
     Router.add = function (name, settings) {
@@ -326,4 +345,3 @@ var Router = {};
         return null;
     }
 })(Router);
-
